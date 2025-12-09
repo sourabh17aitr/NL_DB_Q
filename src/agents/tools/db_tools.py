@@ -1,4 +1,6 @@
 # src/db/db_tools.py
+import time
+import uuid
 from langchain.tools import tool
 from src.db.db_schema_wrapper import DBSchemaWrapper
 
@@ -10,6 +12,17 @@ class DBToolManager:
             cls._instance = super().__new__(cls)
             cls._instance._init_tools()
         return cls._instance
+    
+    def _log_step(self, tool_name, input_data, result):
+        step = {
+            "id": str(uuid.uuid4())[:6],
+            "tool": tool_name,
+            "input": str(input_data)[:100],
+            "output": str(result)[:150] + "..." if len(str(result)) > 150 else str(result),
+            "time": time.strftime("%H:%M:%S")
+        }
+        self.steps.append(step)
+        print(f"🔍 [{len(self.steps)}] {tool_name}({input_data[:30]}...)")
     
     def _init_tools(self):
         self.wrapper = DBSchemaWrapper()
@@ -52,6 +65,20 @@ class DBToolManager:
             if tool.name == tool_name:
                 return tool
         raise ValueError(f"Tool '{tool_name}' not found")
+    
+    def get_step_summary(self):
+        if not self.steps:
+            return "No steps taken"
+        
+        summary = f"📋 **{len(self.steps)} STEPS TAKEN:**\n\n"
+        for i, step in enumerate(self.steps, 1):
+            summary += f"**{i}.** `{step['tool']}` ({step['time']})\n"
+            summary += f"   📥 {step['input']}\n"
+            summary += f"   📤 {step['output']}\n\n"
+        return summary
+    
+    def clear_steps(self):
+        self.steps = []
     
     def close(self):
         self.wrapper.close()
