@@ -21,11 +21,24 @@ class DBToolManager:
             "output": str(result)[:150] + "..." if len(str(result)) > 150 else str(result),
             "time": time.strftime("%H:%M:%S")
         }
-        self.steps.append(step)
+        self.step_log.append(step)
         print(f"🔍 [{len(self.steps)}] {tool_name}({input_data[:30]}...)")
+    
+    def get_step_summary(self) -> str:
+        """Generate human-readable step summary"""
+        if not self.step_log:
+            return "No steps taken yet."
+        
+        summary = "📋 **AGENT STEPS TAKEN:**\n\n"
+        for i, step in enumerate(self.step_log, 1):
+            summary += f"**Step {i}** ({step['timestamp']}): `{step['tool']}`\n"
+            summary += f"   Input: {step['input'][:100]}...\n"
+            summary += f"   Output: {step['result']}\n\n"
+        return summary
     
     def _init_tools(self):
         self.wrapper = DBSchemaWrapper()
+        self.step_log = []
         self.tools = self._create_tools()
     
     def _create_tools(self):
@@ -78,7 +91,7 @@ class DBToolManager:
         return summary
     
     def clear_steps(self):
-        self.steps = []
+        self.step_log = []
     
     def close(self):
         self.wrapper.close()

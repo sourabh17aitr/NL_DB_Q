@@ -8,10 +8,12 @@ langchain
 langgraph
 langchain_community
 langchainhub
+langchain-text-splitters
 chromadb
 streamlit
 python-dotenv
 pyodbc
+faiss-cpu
 
 langchain-openai
 langchain-anthropic

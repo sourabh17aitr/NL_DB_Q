@@ -12,7 +12,6 @@ class DBSchemaWrapper:
     SCHEMA_LIST = ["dbo", "Sales", "Person", "Production", "HumanResources", "Purchasing"]
     
     def __new__(cls):
-        print("inside new method")
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -20,19 +19,17 @@ class DBSchemaWrapper:
         return cls._instance
     
     def __init__(self):
-        print("inside init method")
         if not hasattr(self, '_initialized'):
             self.dbs: Dict[str, SQLDatabase] = {}
             self._initialized = True
             self._init_databases()
         else:
-            print("DBSchemaWrapper instance already initialized. Initiating again to refresh connections.")
+            print("DBSchemaWrapper instance already initialized. Skipping re-initialization.")
             #self._init_databases()
     
     def _init_databases(self):
-        print("inside init_database method")
-        print("🔄 Initializing notebook DB connections...")
         """Initialize database connections once"""
+        print("🔄 Initializing DB connections...")
         db_client = DBClient()
         uri = db_client.get_connection_uri()
         self.dbs = {
