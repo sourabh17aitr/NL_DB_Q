@@ -3,7 +3,7 @@ import threading
 from typing import Dict, List, Optional
 from contextlib import contextmanager
 from langchain_community.utilities import SQLDatabase
-from src.db.db_client import DBClient
+from src.db.db_client import db_client
 
 class DBSchemaWrapper:
     _instance: Optional['DBSchemaWrapper'] = None
@@ -30,7 +30,6 @@ class DBSchemaWrapper:
     def _init_databases(self):
         """Initialize database connections once"""
         print("🔄 Initializing DB connections...")
-        db_client = DBClient()
         uri = db_client.get_connection_uri()
         self.dbs = {
             schema: SQLDatabase.from_uri(uri,schema=schema,engine_args={"pool_pre_ping": True,"pool_recycle": 3600})
@@ -73,3 +72,6 @@ class DBSchemaWrapper:
             if hasattr(db, '_engine'):
                 db._engine.dispose()
         print("✅ All DB connections closed")
+
+# Global singleton
+db_schema_wrapper = DBSchemaWrapper()

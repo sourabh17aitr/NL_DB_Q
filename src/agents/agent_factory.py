@@ -7,7 +7,7 @@ from langchain_groq import ChatGroq
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
-from src.agents.tools.db_tools import DBToolManager
+from src.agents.tools.db_tools import db_tool_manager
 from src.config.prompt import system_prompt, OLLAMA_REACT_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -17,8 +17,7 @@ def _create_agent(llm_provider: str, model_name: str):
     # Create model
     model = _get_model(llm_provider, model_name)    
     # Define tools
-    tool_mgr = DBToolManager()
-    tools = tool_mgr.get_tools()
+    tools = db_tool_manager.get_tools()
     # Create agent
     agent = create_agent(
         model=model,

@@ -27,4 +27,6 @@ class DBClient:
             )
 
         raise NotImplementedError(f"Database type '{self.db_type}' is not supported yet.")
-__all__ = ["DBClient"]
+
+# Global singleton
+db_client = DBClient()
