@@ -1,15 +1,16 @@
-# src/db/db_schema_wrapper.py
+import logging
 import threading
 from typing import Dict, List, Optional
 from contextlib import contextmanager
 from langchain_community.utilities import SQLDatabase
+from src.config.db_schema import SCHEMA_LIST
 from src.db.db_client import db_client
+
+logger = logging.getLogger(__name__)
 
 class DBSchemaWrapper:
     _instance: Optional['DBSchemaWrapper'] = None
     _lock = threading.Lock()
-    
-    SCHEMA_LIST = ["dbo", "Sales", "Person", "Production", "HumanResources", "Purchasing"]
     
     def __new__(cls):
         if cls._instance is None:
@@ -24,19 +25,19 @@ class DBSchemaWrapper:
             self._initialized = True
             self._init_databases()
         else:
-            print("DBSchemaWrapper instance already initialized. Skipping re-initialization.")
+            logger.info("DBSchemaWrapper instance already initialized. Skipping re-initialization.")
             #self._init_databases()
     
     def _init_databases(self):
         """Initialize database connections once"""
-        print("🔄 Initializing DB connections...")
+        logger.info("🔄 Initializing DB connections...")
         uri = db_client.get_connection_uri()
         self.dbs = {
             schema: SQLDatabase.from_uri(uri,schema=schema,engine_args={"pool_pre_ping": True,"pool_recycle": 3600})
-            for schema in self.SCHEMA_LIST
+            for schema in SCHEMA_LIST
         }
         self.default_db = list(self.dbs.values())[0]
-        print("✅ DB connections initialized (pooled)")
+        logger.info("✅ DB connections initialized (pooled)")
     
     @contextmanager
     def get_db(self, schema: str = None):
@@ -53,6 +54,7 @@ class DBSchemaWrapper:
         for schema, db in self.dbs.items():
             tables = db.get_usable_table_names()
             all_tables.extend([f"{schema}.{t}" for t in tables])
+        logger.debug(f"Usable tables: {all_tables}")
         return ", ".join(all_tables)
     
     def get_table_info(self, table_names: List[str]) -> str:
@@ -61,6 +63,7 @@ class DBSchemaWrapper:
             schema_tables = [t.split(".")[-1] for t in table_names if t.startswith(f"{schema}.")]
             if schema_tables:
                 result.append(db.get_table_info(schema_tables))
+        logger.debug(f"Schema info for : {result}")
         return "\n".join(result) if result else "No tables found"
     
     def run(self, query: str) -> str:
@@ -68,10 +71,12 @@ class DBSchemaWrapper:
     
     def close(self):
         """Close all connections"""
+        self._initialized = False
+        logger.info("🔒 Closing all DB connections...")
         for db in self.dbs.values():
             if hasattr(db, '_engine'):
                 db._engine.dispose()
-        print("✅ All DB connections closed")
+        logger.info("✅ All DB connections closed")
 
 # Global singleton
 db_schema_wrapper = DBSchemaWrapper()

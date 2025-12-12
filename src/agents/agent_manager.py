@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any, Generator
-from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.messages import HumanMessage
 from src.agents.agent_factory import _create_agent
 
 logger = logging.getLogger(__name__)
@@ -37,26 +37,18 @@ class AgentManager:
     
     def stream_agent(self, agent, question: str, config: Dict[str, Any]) -> Generator:
         """Stream agent with step tracking."""
-        logger.info(f"📡 Stream: '{question[:50]}...' (thread: {config.get('configurable', {}).get('thread_id')})")
-        chunk_count = 0
+        logger.info(f"📡 Stream: '{question[:50]}...'")
         
         try:
             stream = agent.stream(
-                {"messages": [{"role": "user", "content": question}]},
+                {"messages": [HumanMessage(content=question)]},  # ✅ Fixed message format
                 config,
                 stream_mode="values"
             )
-            
-            for chunk in stream:
-                chunk_count += 1
-                logger.debug(f"📦 Chunk {chunk_count}")
-                yield chunk  # Pass through for UI consumption
-            
-            logger.info(f"✅ Stream complete: {chunk_count} chunks")
-            
+            yield from stream  # ✅ Generator delegation
         except Exception as e:
             logger.error(f"❌ Stream failed: {e}")
-            raise
+            yield {"error": str(e)}
 
 # Global singleton
 agent_manager = AgentManager()

@@ -7,7 +7,7 @@ from posthog import project_root
 
 def setup_logging():
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
@@ -19,5 +19,5 @@ def run_streamlit():
 
 if __name__ == "__main__":
     setup_logging()
-    # start application
-    run_streamlit()
+    proc = run_streamlit()
+    

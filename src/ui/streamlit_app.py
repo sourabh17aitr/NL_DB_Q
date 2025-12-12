@@ -12,10 +12,53 @@ if project_root not in sys.path:
 
 
 from src.agents.agent_manager import agent_manager
-from src.config.model_options import model_options, llm_providers, default_llm
+from src.config.models import model_options, llm_providers, default_llm
 from src.config.prompt import QUERY_EXAMPLES
 
 logger = logging.getLogger(__name__)
+
+def safe_tool_result(result):
+    """Convert ANY tool result → string"""
+    if isinstance(result, list):
+        if len(result) == 0: return "No results"
+        elif len(result) == 1: return str(result[0])
+        else: 
+            preview = "\n".join(str(row)[:100] + "..." for row in result[:5])
+            return f"✅ {len(result)} rows:\n{preview}"
+    elif isinstance(result, dict): return str(result)
+    elif result is None: return "No data"
+    return str(result)
+
+def safe_message_content(msg):
+    """Extract string from ANY message format"""
+    if hasattr(msg, 'content'):
+        content = msg.content
+        if isinstance(content, list) and len(content) > 0:
+            if isinstance(content[0], dict) and 'text' in content[0]:
+                return content[0].get('text', '')
+        return str(content)
+    return ""
+
+def safe_tool_args(args):
+    """Safe tool args display"""
+    if not args: return {}
+    safe_args = {}
+    for k, v in args.items():
+        if isinstance(v, list):
+            safe_args[k] = ", ".join(str(x)[:50] for x in v[:3])
+        else:
+            safe_args[k] = str(v)[:100]
+    return safe_args
+
+def extract_sql_from_content(content):
+    """Extract SQL from response"""
+    content_str = safe_message_content(content) if hasattr(content, 'content') else str(content)
+    if "```sql" in content_str:
+        start = content_str.find("```sql") + 6
+        end = content_str.find("```", start)
+        if end > start > 5:
+            return content_str[start:end].strip()
+    return None
 
 # ------------------ Page Config ------------------
 st.set_page_config(page_title="NLDBQ", page_icon="🗄️", layout="wide")
@@ -24,35 +67,56 @@ st.title("🧠 NLDBQ - Live SQL Agent")
 # ------------------ Session State ------------------
 if "messages" not in st.session_state: st.session_state.messages = []
 if "query_history" not in st.session_state: st.session_state.query_history = []
-if "agent_steps" not in st.session_state: st.session_state.agent_steps = []
-if "llm_provider" not in st.session_state: st.session_state.llm_provider = default_llm["provider"]
-if "model_name" not in st.session_state: st.session_state.model_name = default_llm["model"]
+if "current_agent_key" not in st.session_state: st.session_state.current_agent_key = None
 if "config" not in st.session_state:
     st.session_state.config = {"configurable": {"thread_id": "conversation_1"}}
 if "agent" not in st.session_state: st.session_state.agent = None
+if "agent_steps" not in st.session_state: st.session_state.agent_steps = []
 
 # ------------------ Sidebar ------------------
-st.sidebar.title("🤖 Agent Settings")
-llm_provider = st.sidebar.selectbox(
-    "Provider", llm_providers,
-    index=llm_providers.index(st.session_state.llm_provider)
-)
-
-model_name = st.sidebar.selectbox("Model", model_options[llm_provider])
-
-# ------------------ Agent Loading ------------------
-if (st.session_state.llm_provider != llm_provider or 
-    st.session_state.model_name != model_name or 
-    st.session_state.agent is None or st.sidebar.button("🔄 Reload")):
+with st.sidebar:
+    st.title("🤖 Agent Settings")
+    llm_provider = st.selectbox("Provider", llm_providers, index=llm_providers.index(default_llm["provider"]))
+    model_name = st.selectbox("Model", model_options[llm_provider])
     
-    with st.spinner("Loading agent..."):
-        st.session_state.agent = agent_manager.get_agent(llm_provider, model_name)
-        st.session_state.llm_provider = llm_provider
-        st.session_state.model_name = model_name
-
-agent = st.session_state.agent
-config = st.session_state.config
-
+    agent_key = f"{llm_provider}:{model_name}"
+    
+    if (st.session_state.current_agent_key != agent_key or 
+        st.button("🔄 Reload Agent", use_container_width=True)):
+        
+        with st.spinner(f"Loading {llm_provider}/{model_name}..."):
+            try:
+                agent = agent_manager.get_agent(llm_provider, model_name)
+                st.session_state.agent = agent
+                st.session_state.current_agent_key = agent_key
+                st.session_state.llm_provider = llm_provider
+                st.session_state.model_name = model_name
+                st.success(f"✅ {llm_provider}/{model_name} ready!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Agent failed: {str(e)}")
+                st.session_state.agent = None
+    
+    st.subheader("📋 Recent Queries")
+    if st.session_state.query_history:
+        for query in st.session_state.query_history[-6:][::-1]:
+            with st.expander(f"{query['timestamp'].strftime('%H:%M')} - {query['question'][:40]}..."):
+                if query.get('sql'):
+                    st.code(query['sql'], language='sql')
+    else:
+        st.info("💭 No queries yet")
+    
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🗑️ Clear Chat", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+    with col2:
+        if st.button("🔄 New Thread", use_container_width=True):
+            st.session_state.config = {"configurable": {"thread_id": f"thread_{datetime.now().timestamp()}"}}
+            st.session_state.messages = []
+            st.rerun()
 
 # ------------------ Chat History ------------------
 for msg in st.session_state.messages:
@@ -65,7 +129,11 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
     if not prompt: st.rerun()
     
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
+    with st.chat_message("user"): 
+        st.markdown(prompt)
+    
+    agent = getattr(st.session_state, 'agent', None)
+    config = st.session_state.config
 
     with st.chat_message("assistant"):
         # Live execution panels
@@ -87,35 +155,31 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
                         # 1. THINKING (reasoning)
                         if "messages" in chunk and chunk["messages"]:
                             msg = chunk["messages"][-1]
-                            if hasattr(msg, 'content') and msg.content:
-                                full_response += msg.content
-                                thinking_panel.markdown(f"**💭 Thinking:**\n{msg.content}")
-                                st.session_state.agent_steps[-1] += " (thinking)"
-                        
-                        # 2. TOOL CALLS
-                        if "messages" in chunk:
-                            msg = chunk["messages"][-1]
-                            if hasattr(msg, 'tool_calls') and msg.tool_calls:
-                                tool_call = msg.tool_calls[0]
-                                tool_name = tool_call['name']
-                                args = tool_call['args']
+                            # Content
+                            msg_content = safe_message_content(msg)
+                            if msg_content:
+                                full_response += msg_content
+                            
+                            # 🆕 TOOL DETECTION
+                            tool_calls = msg.tool_calls if hasattr(msg, 'tool_calls') else []
+                            if tool_calls:
+                                tool_call = tool_calls[0]
+                                tool_name = tool_call.get('name', 'unknown')
+                                args = safe_tool_args(tool_call.get('args', {}))
                                 
-                                tool_display = f"🛠️ **{tool_name}**"
-                                if tool_name == "get_table_schema":
-                                    tool_display += f"\n📋 Tables: {args.get('table_names', 'checking...')}"
-                                elif tool_name == "execute_sql":
-                                    tool_display += f"\n📝 SQL: {args.get('query', '')[:100]}..."
+                                step_text = f"**🔧 Step {chunk_idx+1}:** `{tool_name}`"
+                                if tool_name == "execute_sql":
+                                    sql = args.get('query', '')
+                                    step_text += f"\n**💾 SQL:** `{sql[:100]}{'...' if len(sql) > 100 else ''}`"
                                 
-                                tools_panel.markdown(tool_display)
+                                tools_panel.markdown(step_text)
                                 st.session_state.agent_steps[-1] += f" ({tool_name})"
-                        
-                        # 3. SQL DETECTION
-                        if "```sql" in full_response:
-                            start = full_response.find("```sql") + 6
-                            end = full_response.find("```", start)
-                            sql = full_response[start:end].strip()
-                            sql_panel.code(sql, language="sql")
-                            st.session_state.agent_steps[-1] += " (SQL ready)"
+                            
+                            # SQL Highlighting
+                            sql = extract_sql_from_content(full_response)
+                            if sql:
+                                with st.expander("💾 Generated SQL", expanded=True):
+                                    st.code(sql, language="sql")
                     
                     results_panel.markdown(full_response)
                     
@@ -134,26 +198,6 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
         sql_panel.empty()
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-# ------------------ Sidebar History ------------------
-with st.sidebar:
-    st.subheader("📋 Recent Queries")
-    for query in st.session_state.query_history[-5:][::-1]:
-        with st.expander(f"{query['timestamp'].strftime('%H:%M')} - {query['question'][:40]}..."):
-            st.code(query['sql'], language='sql')
-    
-    if st.button("🗑️ Clear All"):
-        st.session_state.messages = []
-        st.session_state.agent_steps = []
-        st.session_state.query_history = []
-        st.session_state.config = {"configurable": {"thread_id": f"conv_{datetime.now().timestamp()}"}}
-        st.rerun()
-
-# ------------------ Status ------------------
-if agent:
-    st.sidebar.success(f"✅ Ready! {st.session_state.llm_provider}/{st.session_state.model_name}")
-else:
-    st.sidebar.warning("⚠️ Agent loading...")
 
 # ------------------ Instructions ------------------
 col1, col2 = st.columns(2)

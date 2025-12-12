@@ -1,0 +1,1 @@
+SCHEMA_LIST = ["dbo", "Sales", "Person", "Production", "HumanResources", "Purchasing"]
