@@ -15,6 +15,9 @@ from src.agents.agent_manager import agent_manager
 from src.config.models import model_options, llm_providers, default_llm
 from src.config.prompt import QUERY_EXAMPLES
 
+from src.config.logging_config import configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 def safe_tool_result(result):
@@ -157,6 +160,7 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
                             msg = chunk["messages"][-1]
                             # Content
                             msg_content = safe_message_content(msg)
+                            #logger.debug(f"Agent chunk content: {msg_content}")
                             if msg_content:
                                 full_response += msg_content
                             
@@ -176,10 +180,10 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
                                 st.session_state.agent_steps[-1] += f" ({tool_name})"
                             
                             # SQL Highlighting
-                            sql = extract_sql_from_content(full_response)
-                            if sql:
-                                with st.expander("💾 Generated SQL", expanded=True):
-                                    st.code(sql, language="sql")
+                            #sql = extract_sql_from_content(full_response)
+                            #if sql:
+                            #    with st.expander("💾 Generated SQL", expanded=True):
+                            #        st.code(sql, language="sql")
                     
                     results_panel.markdown(full_response)
                     
@@ -187,8 +191,7 @@ if prompt := st.chat_input("💬 Ask question (e.g., 'employees in Sales')"):
                     sql_extracted = sql_panel.markdown("") if "```sql" in full_response else "Executed"
                     st.session_state.query_history.append({
                         "question": prompt, "sql": sql_extracted, "timestamp": datetime.now()
-                    })
-                    
+                    })                    
                 except Exception as e:
                     results_panel.error(f"❌ {str(e)}")
         

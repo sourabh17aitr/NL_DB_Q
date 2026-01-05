@@ -1,9 +1,6 @@
 import logging
 import subprocess
 import os
-import sys
-
-from posthog import project_root
 
 def setup_logging():
     logging.basicConfig(

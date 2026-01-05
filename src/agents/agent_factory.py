@@ -8,7 +8,7 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.agents.tools.db_tools import db_tool_manager
-from src.config.prompt import system_prompt, OLLAMA_REACT_PROMPT_2
+from src.config.prompt import system_prompt, OLLAMA_REACT_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def _create_agent(llm_provider: str, model_name: str):
     agent = create_agent(
         model=model,
         tools=tools,
-        system_prompt= OLLAMA_REACT_PROMPT_2 if llm_provider == "Ollama" else system_prompt,
+        system_prompt= OLLAMA_REACT_PROMPT if llm_provider == "Ollama" else system_prompt,
         checkpointer= MemorySaver()
     )
     return agent
