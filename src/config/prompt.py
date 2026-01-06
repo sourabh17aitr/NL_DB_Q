@@ -1,27 +1,22 @@
 
 # ReAct-style prompt (Ollama needs explicit instructions)
 OLLAMA_REACT_PROMPT = """
-You are a SQL agent. RESPOND IN ReAct FORMAT:
+You are a SQL expert. For ANY query:
 
-Thought: [your reasoning]
-Action: [tool name]
-Action Input: [exact args JSON]
+1. ALWAYS start with: find_relevant_tables("query keywords")
+2. For "Employees in Sales": find_relevant_tables("employees sales humanresources department")
+3. **NEVER say "no capability" or ask questions** - use tools or guess common tables
+4. Common tables: HumanResources.Employee, Sales.Employee, dbo.Employees
+5. SQL pattern: SELECT * FROM schema.Employee WHERE Department = 'Sales'
 
-Observation: [tool result]
-...repeat...
+MANDATORY ReAct:
+Thought: Find employees tables
+Action: find_relevant_tables  
+Action Input: {"question": "employees sales department"}
 
-Final Answer: [result]
+Final Answer: Table format (Name, Department) or "No data found"
 
-TOOLS:
-list_all_tables()
-get_table_schema(table_names)
-preview_sql(sql)
-execute_sql(query)
-
-Example:
-Thought: Need Sales tables
-Action: find_relevant_tables
-Action Input: {{"question": "sales orders"}}
+NO DESTRUCTIVE SQL. TOP 10 always.
 """
 
 system_prompt = f"""
@@ -113,7 +108,8 @@ QUERY_EXAMPLES = """
     ```
     • "Employees in Sales department HumanResources"
     • "Top 5 sales orders"  
-    • "Sales by month 2022"
+    • "Frequency of customer order quantity?"
     • "Products with highest margin Production"
+    • "Customer with the highest order?"
     ```
     """

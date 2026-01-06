@@ -2,6 +2,7 @@ import logging
 import subprocess
 import os
 
+
 def setup_logging():
     logging.basicConfig(
         level=logging.DEBUG,
@@ -9,7 +10,7 @@ def setup_logging():
     )
 
 def run_streamlit():
-    streamlit_file = os.path.join(os.path.dirname(__file__), "src", "ui", "streamlit_app.py")
+    streamlit_file = os.path.join(os.path.dirname(__file__), "src", "ui", "app.py")
     subprocess.run(["streamlit", "run", streamlit_file])
 
 

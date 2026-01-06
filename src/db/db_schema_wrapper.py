@@ -1,82 +1,83 @@
+"""
+DB Schema Wrapper - Functions accept self=None for bound method calls.
+Handles type() wrapper + @tool double-binding perfectly.
+"""
 import logging
-import threading
-from typing import Dict, List, Optional
+from typing import Dict, List
 from contextlib import contextmanager
 from langchain_community.utilities import SQLDatabase
 from src.config.db_schema import SCHEMA_LIST
 from src.db.db_client import db_client
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-class DBSchemaWrapper:
-    _instance: Optional['DBSchemaWrapper'] = None
-    _lock = threading.Lock()
-    
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    def __init__(self):
-        if not hasattr(self, '_initialized'):
-            self.dbs: Dict[str, SQLDatabase] = {}
-            self._initialized = True
-            self._init_databases()
-        else:
-            logger.info("DBSchemaWrapper instance already initialized. Skipping re-initialization.")
-            #self._init_databases()
-    
-    def _init_databases(self):
-        """Initialize database connections once"""
-        logger.info("🔄 Initializing DB connections...")
-        uri = db_client.get_connection_uri()
-        self.dbs = {
-            schema: SQLDatabase.from_uri(uri,schema=schema,engine_args={"pool_pre_ping": True,"pool_recycle": 3600})
-            for schema in SCHEMA_LIST
-        }
-        self.default_db = list(self.dbs.values())[0]
-        logger.info("✅ DB connections initialized (pooled)")
-    
-    @contextmanager
-    def get_db(self, schema: str = None):
-        """Context manager for safe DB access"""
-        db = self.dbs.get(schema, self.default_db)
-        try:
-            yield db
-        finally:
-            # Return connection to pool
-            pass
-    
-    def get_usable_table_names(self) -> str:
-        all_tables = []
-        for schema, db in self.dbs.items():
-            tables = db.get_usable_table_names()
-            all_tables.extend([f"{schema}.{t}" for t in tables])
-        logger.debug(f"Usable tables: {all_tables}")
-        return ", ".join(all_tables)
-    
-    def get_table_info(self, table_names: List[str]) -> str:
-        result = []
-        for schema, db in self.dbs.items():
-            schema_tables = [t.split(".")[-1] for t in table_names if t.startswith(f"{schema}.")]
-            if schema_tables:
-                result.append(db.get_table_info(schema_tables))
-        logger.debug(f"Schema info for : {result}")
-        return "\n".join(result) if result else "No tables found"
-    
-    def run(self, query: str) -> str:
-        return self.default_db.run(query)
-    
-    def close(self):
-        """Close all connections"""
-        self._initialized = False
-        logger.info("🔒 Closing all DB connections...")
-        for db in self.dbs.values():
-            if hasattr(db, '_engine'):
-                db._engine.dispose()
-        logger.info("✅ All DB connections closed")
+dbs: Dict[str, SQLDatabase] = {}
+_default_db = None
+_initialized = False
 
-# Global singleton
-db_schema_wrapper = DBSchemaWrapper()
+def _init_databases():
+    global dbs, _default_db, _initialized
+    if _initialized: return
+    
+    logger.info("🔌 Initializing DB connections...")
+    uri = db_client.get_connection_uri()
+    
+    dbs = {
+        schema: SQLDatabase.from_uri(
+            uri, schema=schema, 
+            engine_args={"pool_pre_ping": True, "pool_recycle": 3600}
+        )
+        for schema in SCHEMA_LIST
+    }
+    _default_db = list(dbs.values())[0]
+    _initialized = True
+    logger.info(f"✅ {len(dbs)} schemas ready")
+
+# ✅ FIXED: self=None catches bound method self injection
+def get_usable_table_names(self=None) -> str:
+    _init_databases()
+    all_tables = []
+    for schema, db in dbs.items():
+        tables = db.get_usable_table_names()
+        all_tables.extend(f"{schema}.{t}" for t in tables)
+    return ", ".join(sorted(all_tables))
+
+def get_table_info(self, table_names: List[str]) -> str:
+    _init_databases()
+    if not table_names:
+        return "No tables specified"
+    
+    result = []
+    for schema_name, db in dbs.items():
+        schema_tables = [t.split(".")[-1] for t in table_names if t.startswith(f"{schema_name}.")]
+        if schema_tables:
+            try:
+                info = db.get_table_info(schema_tables)
+                result.append(f"Schema: {schema_name}\n{info}")
+            except Exception as e:
+                result.append(f"Schema: {schema_name} - Error: {e}")
+    
+    return "\n\n".join(result) or "No matching tables"
+
+def run(self, query: str) -> str:
+    _init_databases()
+    return _default_db.run(query)
+
+def close_all(self):
+    global dbs, _default_db, _initialized
+    logger.info("🔒 Closing connections...")
+    for db in list(dbs.values()):
+        if hasattr(db, '_engine'):
+            db._engine.dispose()
+    dbs.clear()
+    _default_db = None
+    _initialized = False
+
+# ✅ Object with bound methods
+db_schema_wrapper = type("Wrapper", (), {
+    "get_usable_table_names": get_usable_table_names,
+    "get_table_info": get_table_info,
+    "run": run,
+    "close": close_all,
+})()
