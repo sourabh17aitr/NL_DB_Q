@@ -12,16 +12,23 @@ NLDBQ is a Streamlit-based prototype that lets you ask natural-language question
 
 ## Repository Structure
 - `main.py`: Entrypoint to launch the Streamlit app
-- `src/ui/streamlit_app.py`: Streamlit chat UI with live agent steps
-- `src/agents/agent_manager.py`: Builds and streams the NLDBQ agent
-- `src/agents/agent_factory.py`: Factory to create agents per provider/model
-- `src/config/model_options.py`: Available LLM providers and default model
-- `src/config/prompt.py`: System and ReAct prompts and examples
+- `src/ui/app.py`: Main Streamlit app that imports all UI features
+- `src/ui/chat.py`: Chat interface with live agent step visualization
+- `src/ui/config.py`: Sidebar configuration for LLM selection
+- `src/ui/history.py`: Query history and footer components
+- `src/ui/main_display.py`: Page setup and session state initialization
+- `src/ui/utils.py`: Utility functions for UI components
+- `src/agents/agent.py`: Agent creation and streaming logic
+- `src/agents/tools.py`: Database tool implementations for agent
+- `src/config/models.py`: Available LLM providers and model options
+- `src/config/prompt.py`: System and ReAct prompts and query examples
+- `src/config/db_schema.py`: Database schema definitions
 - `src/db/db_client.py`: Database connection client
 - `src/db/db_schema_wrapper.py`: Helpers to inspect DB schema
 - `notebook/`: Jupyter notebooks for configuration, DB, agents, tools, comparisons
 - `pyproject.toml`: Package metadata and core dependencies
 - `requirement.txt`: Extra packages for notebooks and integrations
+- `DATA_FLOW_DIAGRAM.md`: Complete data flow and architecture diagrams
 
 ## Requirements
 - Python `>= 3.10`
@@ -55,28 +62,22 @@ NLDBQ is a Streamlit-based prototype that lets you ask natural-language question
 
 ## Running the App
 - Launch via the Python entrypoint:
+  - Activate a virtual environment: 
+
+   ```powershell
+  .\.venv\Scripts\Activate.ps1
+  ```
+
   ```powershell
   python main.py
   ```
-  This starts Streamlit and loads `src/ui/streamlit_app.py`.
+  This starts Streamlit and loads `src/ui/app.py`.
 
-- Or directly with Streamlit:
+- Or (optional) directly with Streamlit:
   ```powershell
-  streamlit run src/ui/streamlit_app.py
+  streamlit run src/ui/app.py
   ```
 
-## Using the App
-- Pick a provider/model in the sidebar (defaults to Ollama `llama3-groq-tool-use`).
-- Ask a question like "employees in Sales" or "Top 5 sales orders".
-- Watch live agent steps: thinking, tool calls, SQL detection, and results.
-- The agent follows strict safety rules (no destructive SQL), fully qualifies table names, and validates queries before execution.
-
-## Database Configuration
-- Provide a working connection via your chosen driver:
-  - SQL Server (ODBC): ensure an ODBC driver is installed; use `pyodbc`.
-  - MySQL: `pymysql`
-  - PostgreSQL: `psycopg2-binary`
-- The agent uses helpers in `src/db/` to list tables and inspect schemas.
 
 ## Notebooks
 - `notebook/0.0-configuration-check.ipynb`: environment checks
@@ -87,16 +88,16 @@ NLDBQ is a Streamlit-based prototype that lets you ask natural-language question
 - `notebook/5.x-*`: vector agent
 - `notebook/6.x-*`: model comparisons
 
+## Documentation
+- See [DATA_FLOW_DIAGRAM.md](DATA_FLOW_DIAGRAM.md) for complete architecture and data flow diagrams
+- Includes component breakdowns, sequence diagrams, and error handling flows
+
 ## Development Notes
 - Packaging is configured via `pyproject.toml` with setuptools.
-- Source packages are under `src/`.
-- The Streamlit page config/title is set in `streamlit_app.py`.
+- Source packages are under `src/` organized by layer (ui, agents, config, db).
+- The Streamlit app is modular with separate files for chat, config, history, and display.
+- UI components use session state for persistence across reruns.
+- Agent streaming displays real-time steps using Streamlit placeholders.
 - Prompts and provider options are in `src/config/`.
 
-## Troubleshooting
-- If Streamlit fails to start, ensure the venv is activated and dependencies installed.
-- For DB errors, verify your connection string and that the driver is installed.
-- If LLM calls fail, check the relevant API key in `.env`.
 
-## License
-MIT
