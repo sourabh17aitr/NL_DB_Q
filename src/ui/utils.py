@@ -1,5 +1,5 @@
 # Utility functions for message/chunk processing (extracted from main file)
-from typing import Any, List
+from typing import Any, List, Dict
 
 def safe_message_content(msg: Any) -> str:
     """Extract string from message or tool result - handles all LangGraph message types."""
@@ -74,3 +74,40 @@ def extract_sql_from_content(content: str) -> str:
         if end > start > 5:
             return content[start:end].strip()
     return None
+
+def extract_todos(chunk: Dict[str, Any]) -> str:
+    """Extract & format todos from LangGraph chunk as markdown checklist."""
+    todos_md = ""
+    
+    # Find todos in chunk (common paths)
+    for key in ["todos", "__end__", "updates", "messages"]:
+        if isinstance(chunk, dict) and key in chunk:
+            data = chunk[key]
+            if isinstance(data, dict) and "todos" in data:
+                todos_list = data["todos"].get("value", data["todos"])
+            elif isinstance(data, list) and any("todos" in d for d in data if isinstance(d, dict)):
+                # Handle list of updates
+                for item in data:
+                    if isinstance(item, dict) and "todos" in item:
+                        todos_list = item["todos"].get("value", item["todos"])
+                        break
+                else:
+                    continue
+            else:
+                continue
+            
+            # PARSE YOUR FORMAT: [{"content": "...", "status": "..."}]
+            if isinstance(todos_list, list):
+                formatted_todos = []
+                for todo in todos_list:
+                    content = todo.get("content", "")
+                    status = todo.get("status", "pending")
+                    if status == "completed":
+                        formatted_todos.append(f"✅ **{content}**")
+                    else:
+                        formatted_todos.append(f"⏳ **{content}**")
+                
+                todos_md = "\n".join(formatted_todos)
+            break
+    
+    return todos_md.strip() if todos_md else ""

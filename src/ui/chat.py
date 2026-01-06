@@ -1,8 +1,7 @@
-# Chat history display + input handling + streaming
+# File: chat_ui.py - Updated handle_chat_input
 import streamlit as st
 from datetime import datetime
-from typing import List
-from .utils import extract_content_from_chunk, extract_sql_from_content
+from .utils import extract_content_from_chunk, extract_sql_from_content, extract_todos
 from src.agents.agent import stream_agent
 
 def render_chat_history():
@@ -10,6 +9,8 @@ def render_chat_history():
     for msg in st.session_state.get('messages', []):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+
+
 
 def handle_chat_input():
     """Handle new user prompt + streaming response."""
@@ -30,58 +31,60 @@ def handle_chat_input():
         if agent:
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
+                plan_placeholder = st.empty()  # New: Plan display
                 full_response = ""
+                current_plan = ""  # Track live plan updates
                 
                 # Init chunk counter in session state
                 if 'chunk_count' not in st.session_state:
                     st.session_state.chunk_count = 0
                 
-                with st.spinner("🤔 Agent working..."):
+                with st.spinner("🤔 Agent is working..."):
                     try:
                         chunk_count = 0
-                        chunks_processed = []  # Debug: collect all chunks
                         
-                        # CRITICAL: Pass config with thread_id for LangGraph persistence
                         for chunk in stream_agent(agent, prompt, config):
                             chunk_count += 1
-                            st.session_state.chunk_count = chunk_count  # Persist for metrics
                             
-                            # Debug: Store raw chunks
-                            chunks_processed.append(chunk)
+                            # EXTRACT PLAN FROM CHUNK (TodoListMiddleware)
+                            new_plan = extract_todos(chunk)
+                            if new_plan and new_plan != current_plan:
+                                current_plan = new_plan
+                                # Live plan update in expander
+                                with plan_placeholder.container():
+                                    with st.expander(f"📋 **Agent Plan** (updated {chunk_count} steps in)", expanded=True):
+                                        st.markdown(current_plan)
                             
-                            # Debug output (toggle in sidebar)
-                            if st.session_state.get('show_debug', False):
-                                with st.expander(f"Debug Chunk #{chunk_count}"):
-                                    st.json(chunk)
-                            
-                            # Extract ALL content from chunk (handles LangGraph formats)
+                            # Extract main content
                             new_contents = extract_content_from_chunk(chunk)
                             for content in new_contents:
                                 full_response += content
                             
-                            # Live update if new content
+                            # Live response update
                             if new_contents:
                                 message_placeholder.markdown(full_response + "▌")
                         
-                        st.session_state.chunk_count = chunk_count  # Final count
-                        
-                        # FINAL: Always show complete response (even if empty)
+                        # FINAL DISPLAY
                         final_response = full_response.strip()
-                        message_placeholder.markdown(final_response or "*(No content extracted from chunks)*")
+                        message_placeholder.markdown(final_response or "*(No content extracted)*")
                         
-                        # Log for debug
-                        st.info(f"✅ Processed {chunk_count} chunks, {len(full_response)} chars")
+                        # Final plan if available
+                        if current_plan:
+                            with plan_placeholder.container():
+                                with st.expander("📋 **Final Agent Plan**", expanded=False):
+                                    st.markdown(current_plan)
                         
-                        # Extract SQL + save history
-                        sql = extract_sql_from_content(final_response)
+                        st.info(f"✅ Processed {chunk_count} chunks")
+                        
+                        # Save history (include plan if present)
                         st.session_state.query_history.append({
                             "question": prompt, 
-                            "sql": sql, 
+                            "plan": current_plan,  # Save plan for history
+                            #"sql": extract_sql_from_content(final_response),
                             "response": final_response,
                             "timestamp": datetime.now()
                         })
                         
-                        # Add assistant message to history
                         st.session_state.messages.append({"role": "assistant", "content": final_response})
                         
                     except Exception as e:
@@ -89,8 +92,7 @@ def handle_chat_input():
                         error_msg = f"❌ Error: {str(e)}\n\n```{traceback.format_exc()}```"
                         message_placeholder.error(error_msg)
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
-                        st.error(f"Full error: {e}")
         else:
-            st.error("❌ No agent loaded. Select provider/model in sidebar first.")
+            st.error("❌ No agent loaded.")
         
-        st.rerun()  # Refresh to update history/metrics
+        st.rerun()

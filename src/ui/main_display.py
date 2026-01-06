@@ -22,4 +22,4 @@ def init_session_state():
 def render_page_setup():
     """Page config + title."""
     st.set_page_config(page_title="NLDBQ", page_icon="📄", layout="wide")
-    st.title("🤖 NLDBQ - Live SQL Agent (Fixed Streaming)")
+    st.title("🤖 NLDBQ - Live SQL Agent")

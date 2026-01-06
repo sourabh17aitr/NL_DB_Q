@@ -7,6 +7,7 @@ from langchain_groq import ChatGroq
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import HumanMessage
+from langchain.agents.middleware import TodoListMiddleware 
 
 from src.config.prompt import system_prompt, OLLAMA_REACT_PROMPT
 from src.agents.tools import db_tool_manager
@@ -33,12 +34,12 @@ def get_agent(provider: str, model: str):
         tools = db_tool_manager.get_tools()
         prompt = OLLAMA_REACT_PROMPT if provider == "Ollama" else system_prompt
         
-        # ✅ Fixed: Correct create_agent signature
         agent = create_agent(
             model=llm,
             tools=tools,
-            system_prompt=prompt,  # ✅ system_prompt param
-            checkpointer=checkpointer
+            system_prompt=prompt,
+            checkpointer=checkpointer,
+            middleware=[TodoListMiddleware()] 
         )
         _agents_cache[key] = agent
     return _agents_cache[key]
