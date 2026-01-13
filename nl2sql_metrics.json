@@ -1,0 +1,87 @@
+{
+  "pipeline": {
+    "total_duration": 24.290818452835083,
+    "success": true,
+    "retries": 0,
+    "validation_failures": 0,
+    "execution_failures": 0,
+    "total_steps": 5
+  },
+  "nodes": {
+    "parallel_schema_retrieval": {
+      "executions": 1,
+      "total_time": 3.174394369125366,
+      "avg_time": 3.174394369125366,
+      "errors": 0,
+      "last_execution_time": 3.174394369125366
+    },
+    "query_generation": {
+      "executions": 1,
+      "total_time": 4.367531776428223,
+      "avg_time": 4.367531776428223,
+      "errors": 0,
+      "last_execution_time": 4.367531776428223
+    },
+    "query_validation": {
+      "executions": 1,
+      "total_time": 13.516496896743774,
+      "avg_time": 13.516496896743774,
+      "errors": 0,
+      "last_execution_time": 13.516496896743774
+    },
+    "query_execution": {
+      "executions": 1,
+      "total_time": 0.23777174949645996,
+      "avg_time": 0.23777174949645996,
+      "errors": 0,
+      "last_execution_time": 0.23777174949645996
+    },
+    "result_formatting": {
+      "executions": 1,
+      "total_time": 2.9856412410736084,
+      "avg_time": 2.9856412410736084,
+      "errors": 0,
+      "last_execution_time": 2.9856412410736084
+    }
+  },
+  "llm": {
+    "total_calls": 4,
+    "total_tokens": 2617,
+    "prompt_tokens": 1943,
+    "completion_tokens": 674,
+    "estimated_cost": 0.0115975,
+    "calls_per_node": {
+      "parallel_schema_retrieval": 1,
+      "query_generation": 1,
+      "query_validation": 1,
+      "result_formatting": 1
+    }
+  },
+  "steps": [
+    {
+      "node": "parallel_schema_retrieval",
+      "duration": 3.174394369125366,
+      "timestamp": "2026-01-12T22:32:30.709368"
+    },
+    {
+      "node": "query_generation",
+      "duration": 4.367531776428223,
+      "timestamp": "2026-01-12T22:32:35.078874"
+    },
+    {
+      "node": "query_validation",
+      "duration": 13.516496896743774,
+      "timestamp": "2026-01-12T22:32:48.595371"
+    },
+    {
+      "node": "query_execution",
+      "duration": 0.23777174949645996,
+      "timestamp": "2026-01-12T22:32:48.833143"
+    },
+    {
+      "node": "result_formatting",
+      "duration": 2.9856412410736084,
+      "timestamp": "2026-01-12T22:32:51.818784"
+    }
+  ]
+}

@@ -39,44 +39,55 @@ NLDBQ is a Streamlit-based prototype that lets you ask natural-language question
 - Optional vector/LLM tooling: `langchain`, `langgraph`, `chromadb`, etc.
 
 ## Setup
-1. Create/activate a virtual environment (PowerShell):
+1. **Python Requirements**: Ensure Python >= 3.10 is installed
+   ```powershell
+   python --version
+   ```
+
+2. **Create Virtual Environment**:
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
    ```
-2. Install dependencies:
-   - Core project deps (from `pyproject.toml`) using pip:
-     ```powershell
-     pip install -e .
-     ```
-   - Notebook and optional packages (from `requirement.txt`):
-     ```powershell
-     pip install -r requirement.txt
-     ```
-3. Configure environment variables in `.env` (create if missing). Common values:
-   - `OPENAI_API_KEY` for OpenAI
-   - `ANTHROPIC_API_KEY` for Anthropic
-   - `GROQ_API_KEY` for Groq
-   - `GOOGLE_API_KEY` for Gemini
-   - DB connection string(s), e.g. `DB_CONNECTION_STRING`
+
+3. **Install Dependencies**:
+   ```powershell
+   # Core dependencies
+   pip install -e .
+   
+   # Optional: Jupyter notebooks and extras
+   pip install -r requirement.txt
+   ```
+
+4. **Configure Environment**:
+   ```powershell
+   # Copy example and edit with your credentials
+   copy .env.example .env
+   notepad .env
+   ```
+   
+   Required variables:
+   - API keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.
+   - Database: `DB_TYPE`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+
+5. **Verify Setup**:
+   ```powershell
+   python setup_check.py
+   ```
 
 ## Running the App
-- Launch via the Python entrypoint:
-  - Activate a virtual environment: 
+```powershell
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
 
-   ```powershell
-  .\.venv\Scripts\Activate.ps1
-  ```
+# Run application (builds vector store and launches UI)
+python main.py
+```
 
-  ```powershell
-  python main.py
-  ```
-  This starts Streamlit and loads `src/ui/app.py`.
-
-- Or (optional) directly with Streamlit:
-  ```powershell
-  streamlit run src/ui/app.py
-  ```
+The app will:
+1. Build schema vector store for intelligent table search
+2. Launch Streamlit at http://localhost:8501
+3. Open with dual UI tabs (LangChain + LangGraph)
 
 
 ## Notebooks

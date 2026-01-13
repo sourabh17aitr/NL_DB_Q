@@ -1,1 +1,6 @@
-SCHEMA_LIST = ["dbo", "Sales", "Person", "Production", "HumanResources", "Purchasing"]
+SQL_SCHEMA_QUERY = """
+        SELECT TABLE_SCHEMA + '.' + TABLE_NAME as full_table_name
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_TYPE = 'BASE TABLE'
+        ORDER BY TABLE_SCHEMA, TABLE_NAME
+    """

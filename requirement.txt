@@ -1,24 +1,36 @@
+# Jupyter & Data Science
 jupyter
 ipykernel
 pandas
 numpy
+plotly
+
 matplotlib
 
-langchain
-langgraph
+# LangChain Core (moved to pyproject.toml)
+# langchain
+# langgraph
+# streamlit
+# python-dotenv
+# chromadb
+
+# LangChain Extensions
 langchain_community
 langchainhub
 langchain-text-splitters
-chromadb
-streamlit
-python-dotenv
-pyodbc
 faiss-cpu
 
+# LLM Providers
 langchain-openai
 langchain-anthropic
 langchain-groq
 langchain-google-genai
 langchain-ollama
+google-cloud-aiplatform
+
+# Database Drivers (moved to pyproject.toml)
+# pyodbc
+# pymysql
+# psycopg2-binary
 
 

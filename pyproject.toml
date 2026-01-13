@@ -10,9 +10,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 keywords = ["nldbq", "langchain", "streamlit", "llm", "database", "sql"]
-authors = [
-  { name="Your Name" }
-]
 
 dependencies = [
     "python-dotenv",
